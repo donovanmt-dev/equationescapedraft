@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Equation Escape — Math Arcade</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a1a; min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 1rem; }
+  #er-root { font-family: 'Press Start 2P', monospace; background: #0a0a1a; color: white; width: 100%; max-width: 680px; }
+  .screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 580px; padding: 1.5rem; text-align: center; }
+  .hidden { display: none !important; }
+  .btn { font-family: 'Press Start 2P', monospace; background: #0a0a1a; color: #f0e040; border: 2px solid #f0e040; padding: 12px 18px; font-size: 10px; cursor: pointer; border-radius: 4px; margin: 6px; line-height: 1.8; }
+  .btn:hover { background: #1a1a3a; }
+  .btn.green { color: #00ff99; border-color: #00ff99; }
+  .btn.pink { color: #ff6ec7; border-color: #ff6ec7; }
+  .eq-card { background: #10103a; border: 2px solid #534AB7; border-radius: 6px; padding: 16px 18px; margin: 8px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .eq-text { font-size: 15px; color: #f0e040; line-height: 1.8; }
+  .eq-input { font-family: 'Press Start 2P', monospace; background: #0a0a1a; color: #00ff99; border: 2px solid #00ff99; padding: 8px 10px; font-size: 13px; width: 90px; text-align: center; border-radius: 4px; outline: none; -moz-appearance: textfield; }
+  .eq-input::-webkit-outer-spin-button, .eq-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .eq-status { font-size: 14px; min-width: 20px; }
+  .room-title { font-size: 13px; color: #00ff99; line-height: 2; margin-bottom: 6px; text-shadow: 2px 2px #005533; }
+  .room-flavor { font-size: 8px; color: #aaa; line-height: 2.2; margin-bottom: 18px; max-width: 480px; }
+  .lock-display { font-size: 36px; margin-bottom: 10px; }
+  .progress-bar { display: flex; gap: 8px; margin-bottom: 20px; }
+  .prog-dot { width: 14px; height: 14px; border-radius: 2px; border: 2px solid #f0e040; }
+  .prog-dot.done { background: #f0e040; }
+  .prog-dot.current { background: #00ff99; border-color: #00ff99; }
+</style>
+</head>
+<body>
+<div id="er-root">
+
+  <!-- TITLE -->
+  <div id="title-screen" class="screen">
+    <p style="font-size:10px;color:#f0e040;margin-bottom:12px;letter-spacing:0.1em;">👾 MATH ARCADE PRESENTS 👾</p>
+    <div style="font-size:48px;margin-bottom:10px;">🔐</div>
+    <h1 style="font-size:16px;color:#00ff99;line-height:2;text-shadow:2px 2px #005533;margin-bottom:8px;">EQUATION<br>ESCAPE</h1>
+    <p style="font-size:8px;color:#ff6ec7;margin-bottom:24px;line-height:2;">SOLVE · CHECK YOUR WORK · UNLOCK THE DOOR</p>
+    <p style="font-size:8px;color:#aaa;line-height:2.4;max-width:400px;margin-bottom:24px;">Solve each equation on paper first.<br>Enter your answer to check.<br>Unlock all rooms to escape!</p>
+    <p style="font-size:9px;color:#aaa;margin-bottom:14px;">CHOOSE YOUR LEVEL:</p>
+    <button class="btn green" onclick="startGame('normal')">▶ ON-LEVEL<br><span style="font-size:7px;color:#aaa;">ONE-STEP EQUATIONS</span></button>
+    <button class="btn pink" onclick="startGame('challenge')" style="margin-top:8px;">▶ CHALLENGE<br><span style="font-size:7px;color:#aaa;">TWO-STEP EQUATIONS</span></button>
+    <p style="font-size:8px;color:#333;margin-top:28px;">© 1984 MATH ARCADE · ALL RIGHTS RESERVED</p>
+  </div>
+
+  <!-- ROOM SCREEN -->
+  <div id="room-screen" class="hidden" style="width:100%;padding:1rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 4px;border-bottom:2px solid #f0e040;margin-bottom:16px;">
+      <span style="font-size:8px;color:#f0e040;">ROOM <span id="room-num">1</span> OF 4</span>
+      <div class="progress-bar" id="progress-bar"></div>
+      <span style="font-size:8px;color:#00ff99;">SOLVED: <span id="solved-count">0</span>/<span id="total-count">3</span></span>
+    </div>
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="lock-display" id="room-icon">🔐</div>
+      <p class="room-title" id="room-title">ROOM 1</p>
+      <p class="room-flavor" id="room-flavor">Solve the equations to find the code.</p>
+    </div>
+    <div id="equations-container" style="margin-bottom:16px;"></div>
+    <div style="text-align:center;">
+      <p id="room-feedback" style="font-size:9px;min-height:20px;margin-bottom:10px;line-height:2;"> </p>
+      <button class="btn green" id="unlock-btn" onclick="tryUnlock()" style="display:none;">🔓 UNLOCK DOOR</button>
+    </div>
+  </div>
+
+  <!-- TRANSITION SCREEN -->
+  <div id="transition-screen" class="hidden screen">
+    <div style="font-size:56px;margin-bottom:12px;" id="trans-icon">✅</div>
+    <p style="font-size:13px;color:#00ff99;margin-bottom:8px;" id="trans-title">ROOM UNLOCKED!</p>
+    <p style="font-size:8px;color:#aaa;margin-bottom:24px;line-height:2;" id="trans-msg">Great work! Moving to the next room...</p>
+    <button class="btn green" onclick="nextRoom()">▶ NEXT ROOM</button>
+  </div>
+
+  <!-- WIN SCREEN -->
+  <div id="win-screen" class="hidden screen">
+    <div style="font-size:56px;margin-bottom:12px;">🏆</div>
+    <p style="font-size:14px;color:#f0e040;margin-bottom:8px;">YOU ESCAPED!</p>
+    <p style="font-size:8px;color:#aaa;margin-bottom:6px;line-height:2.2;">ALL ROOMS UNLOCKED.<br>MISSION COMPLETE.</p>
+    <p style="font-size:9px;color:#00ff99;margin-bottom:24px;">EQUATIONS SOLVED: <span id="win-solved">0</span></p>
+    <button class="btn green" onclick="showTitle()">▶ PLAY AGAIN</button>
+    <button class="btn pink" onclick="startGame('challenge')" id="upgrade-btn" style="margin-top:8px;">▶ TRY CHALLENGE</button>
+  </div>
+
+</div>
+
+<script>
+const ROOMS = [
+  { title:"THE LOBBY", icon:"🚪", flavor:"The front door is locked. Solve to find the keypad code.", eqCount: 3 },
+  { title:"THE VAULT", icon:"🔐", flavor:"A steel vault blocks your path. Crack the combination.", eqCount: 3 },
+  { title:"THE LAB",   icon:"🧪", flavor:"Strange machines hum. Solve the equations to power down the lock.", eqCount: 4 },
+  { title:"THE EXIT",  icon:"🚀", flavor:"Freedom is one solve away. Enter the final code to escape!", eqCount: 4 },
+];
+
+const NORMAL = [
+  {eq:"x + 3 = 10", ans:7}, {eq:"x − 5 = 4", ans:9}, {eq:"x + 7 = 15", ans:8},
+  {eq:"x − 2 = 11", ans:13}, {eq:"2x = 14", ans:7}, {eq:"3x = 21", ans:7},
+  {eq:"x ÷ 4 = 3", ans:12}, {eq:"x + 9 = 17", ans:8}, {eq:"x − 6 = 8", ans:14},
+  {eq:"4x = 32", ans:8}, {eq:"x ÷ 3 = 5", ans:15}, {eq:"x + 12 = 20", ans:8},
+  {eq:"x − 8 = 7", ans:15}, {eq:"5x = 30", ans:6},
+];
+const CHALLENGE = [
+  {eq:"2x + 1 = 11", ans:5}, {eq:"3x − 4 = 8", ans:4}, {eq:"4x + 3 = 19", ans:4},
+  {eq:"2x − 7 = 9", ans:8}, {eq:"5x + 2 = 22", ans:4}, {eq:"3x − 6 = 9", ans:5},
+  {eq:"2x + 8 = 20", ans:6}, {eq:"4x − 5 = 15", ans:5}, {eq:"6x + 1 = 25", ans:4},
+  {eq:"3x + 4 = 22", ans:6}, {eq:"2x − 9 = 5", ans:7}, {eq:"5x − 3 = 22", ans:5},
+  {eq:"7x + 0 = 28", ans:4}, {eq:"3x + 6 = 24", ans:6},
+];
+
+let mode, currentRoom, roomEquations, solvedFlags, totalSolved, usedIdxs;
+
+function shuffle(arr){ return [...arr].sort(()=>Math.random()-0.5); }
+
+function startGame(m){
+  mode = m; currentRoom = 0; totalSolved = 0; usedIdxs = new Set();
+  showScreen('room-screen');
+  loadRoom();
+}
+
+function loadRoom(){
+  const r = ROOMS[currentRoom];
+  const pool = mode==='challenge' ? CHALLENGE : NORMAL;
+  let available = pool.map((_,i)=>i).filter(i=>!usedIdxs.has(i));
+  if(available.length < r.eqCount){ usedIdxs.clear(); available = pool.map((_,i)=>i); }
+  const picked = shuffle(available).slice(0, r.eqCount);
+  picked.forEach(i=>usedIdxs.add(i));
+  roomEquations = picked.map(i=>pool[i]);
+  solvedFlags = new Array(r.eqCount).fill(false);
+
+  document.getElementById('room-num').textContent = currentRoom+1;
+  document.getElementById('room-title').textContent = r.title;
+  document.getElementById('room-flavor').textContent = r.flavor;
+  document.getElementById('room-icon').textContent = r.icon;
+  document.getElementById('solved-count').textContent = 0;
+  document.getElementById('total-count').textContent = r.eqCount;
+  document.getElementById('room-feedback').textContent = ' ';
+  document.getElementById('unlock-btn').style.display = 'none';
+
+  const pb = document.getElementById('progress-bar');
+  pb.innerHTML = '';
+  ROOMS.forEach((_,i)=>{
+    const d = document.createElement('div');
+    d.className = 'prog-dot' + (i<currentRoom?' done':i===currentRoom?' current':'');
+    pb.appendChild(d);
+  });
+
+  const container = document.getElementById('equations-container');
+  container.innerHTML = '';
+  roomEquations.forEach((eq,i)=>{
+    const row = document.createElement('div');
+    row.className = 'eq-card';
+    row.id = `eq-row-${i}`;
+    row.innerHTML = `
+      <span class="eq-text">${i+1}. &nbsp; ${eq.eq}</span>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:10px;color:#aaa;">x =</span>
+        <input class="eq-input" type="number" id="eq-input-${i}" placeholder="?" />
+        <button class="btn" style="padding:8px 10px;font-size:9px;" onclick="checkOne(${i})">CHECK</button>
+        <span class="eq-status" id="eq-status-${i}"> </span>
+      </div>`;
+    container.appendChild(row);
+  });
+}
+
+function checkOne(i){
+  const val = parseInt(document.getElementById(`eq-input-${i}`).value);
+  const statusEl = document.getElementById(`eq-status-${i}`);
+  const rowEl = document.getElementById(`eq-row-${i}`);
+  const input = document.getElementById(`eq-input-${i}`);
+  if(isNaN(val)){
+    document.getElementById('room-feedback').textContent = '⚠ ENTER A NUMBER FIRST!';
+    document.getElementById('room-feedback').style.color = '#f0e040';
+    return;
+  }
+  if(val === roomEquations[i].ans){
+    statusEl.textContent = '✅';
+    rowEl.style.borderColor = '#00ff99';
+    input.disabled = true;
+    if(!solvedFlags[i]){ solvedFlags[i]=true; totalSolved++; }
+    const count = solvedFlags.filter(Boolean).length;
+    document.getElementById('solved-count').textContent = count;
+    document.getElementById('room-feedback').textContent = '✅ CORRECT! KEEP GOING!';
+    document.getElementById('room-feedback').style.color = '#00ff99';
+    if(solvedFlags.every(Boolean)){
+      document.getElementById('room-feedback').textContent = '🔓 ALL SOLVED! UNLOCK THE DOOR!';
+      document.getElementById('unlock-btn').style.display = 'inline-block';
+    }
+  } else {
+    statusEl.textContent = '❌';
+    rowEl.style.borderColor = '#ff6ec7';
+    document.getElementById('room-feedback').textContent = '❌ NOT QUITE — CHECK YOUR WORK!';
+    document.getElementById('room-feedback').style.color = '#ff6ec7';
+    setTimeout(()=>{ statusEl.textContent=' '; rowEl.style.borderColor='#534AB7'; }, 1200);
+  }
+}
+
+function tryUnlock(){
+  if(!solvedFlags.every(Boolean)){
+    document.getElementById('room-feedback').textContent = '⚠ SOLVE ALL EQUATIONS FIRST!';
+    document.getElementById('room-feedback').style.color='#f0e040';
+    return;
+  }
+  document.getElementById('trans-icon').textContent = ROOMS[currentRoom].icon;
+  document.getElementById('trans-title').textContent = ROOMS[currentRoom].title + ' UNLOCKED!';
+  const next = currentRoom+1 < ROOMS.length ? `Next up: ${ROOMS[currentRoom+1].title}` : 'Final room cleared!';
+  document.getElementById('trans-msg').textContent = next;
+  showScreen('transition-screen');
+}
+
+function nextRoom(){
+  currentRoom++;
+  if(currentRoom >= ROOMS.length){
+    document.getElementById('win-solved').textContent = totalSolved;
+    document.getElementById('upgrade-btn').style.display = mode==='normal'?'':'none';
+    showScreen('win-screen');
+  } else {
+    showScreen('room-screen');
+    loadRoom();
+  }
+}
+
+function showTitle(){ showScreen('title-screen'); }
+
+function showScreen(id){
+  ['title-screen','room-screen','transition-screen','win-screen'].forEach(s=>{
+    document.getElementById(s).classList.toggle('hidden', s!==id);
+  });
+}
+
+document.addEventListener('keydown', e=>{
+  if(e.key==='Enter'){
+    const allInputs = [...document.querySelectorAll('.eq-input')];
+    allInputs.forEach((inp, idx)=>{
+      if(document.activeElement === inp) checkOne(idx);
+    });
+  }
+});
+</script>
+</body>
+</html>
